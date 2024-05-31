@@ -1,0 +1,309 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct Contact {
+    int id;
+    char name[50];
+    char phone[20];
+    char notes[100];
+    struct Contact *next;
+} Contact;
+
+Contact *head = NULL;
+int contactCount = 0;
+const char *filename = "phonebook.txt";
+
+void menu(){
+        printf("*****************电话簿管理系统************************\n");
+        printf("*                1. 添加联系人                        *\n");
+        printf("*                2. 删除联系人                        *\n");
+        printf("*                3. 查找联系人                        *\n");
+        printf("*                4. 修改联系人信息                    *\n");
+        printf("*                5. 排序联系人                        *\n");
+        printf("*                6. 显示所有联系人                    *\n");
+        printf("*                0. 退出                              *\n");
+        printf("*                请输入您的选择：                     *\n");
+        printf("*******************************************************\n");
+}
+void saveToFile() {
+    FILE *file = fopen(filename, "w");
+    if (!file) {
+        printf("无法打开文件保存数据。\n");
+        return;
+    }
+
+    Contact *current = head;
+    while (current) {
+        fprintf(file, "%d,%s,%s,%s\n", current->id, current->name, current->phone, current->notes);
+        current = current->next;
+    }
+
+    fclose(file);
+    printf("数据已保存到文件。\n");
+}
+
+void loadFromFile() {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        file = fopen(filename, "w");  // Create a new file if it doesn't exist
+        if (!file) {
+            printf("无法创建文件。\n");
+            return;
+        }
+        fclose(file);
+        printf("文件已创建。\n");
+        return;
+    }
+
+    char line[200];
+    while (fgets(line, sizeof(line), file)) {
+        Contact *newContact = (Contact *)malloc(sizeof(Contact));
+        if (!newContact) {
+            printf("内存分配失败。\n");
+            fclose(file);
+            return;
+        }
+
+        sscanf(line, "%d,%49[^,],%19[^,],%99[^\n]", &newContact->id, newContact->name, newContact->phone, newContact->notes);
+        newContact->next = NULL;
+
+        if (!head) {
+            head = newContact;
+        } else {
+            Contact *current = head;
+            while (current->next) {
+                current = current->next;
+            }
+            current->next = newContact;
+        }
+        contactCount++;
+    }
+
+    fclose(file);
+    printf("数据已从文件加载。\n");
+}
+
+void add() {
+    Contact *newContact = (Contact *)malloc(sizeof(Contact));
+    if (!newContact) {
+        printf("内存分配失败。\n");
+        return;
+    }
+    newContact->id = contactCount + 1;
+    newContact->next = NULL;
+
+    printf("请输入姓名：");
+    scanf("%s", newContact->name);
+    printf("请输入电话号码：");
+    scanf("%s", newContact->phone);
+    printf("请输入备注：");
+    scanf("%s", newContact->notes);
+
+    if (!head) {
+        head = newContact;
+    } else {
+        Contact *current = head;
+        while (current->next) {
+            current = current->next;
+        }
+        current->next = newContact;
+    }
+    contactCount++;
+    printf("联系人添加成功。\n");
+    saveToFile();
+}
+
+void Delete() {
+    int id;
+    printf("请输入要删除的联系人的序号：");
+    scanf("%d", &id);
+
+    if (id < 1 || id > contactCount) {
+        printf("无效的序号。\n");
+        return;
+    }
+
+    Contact *current = head;
+    Contact *previous = NULL;
+
+    while (current && current->id != id) {
+        previous = current;
+        current = current->next;
+    }
+
+    if (!current) {
+        printf("未找到联系人。\n");
+        return;
+    }
+
+    if (!previous) {
+        head = current->next;
+    } else {
+        previous->next = current->next;
+    }
+
+    free(current);
+    contactCount--;
+
+    // Update IDs
+    current = head;
+    int index = 1;
+    while (current) {
+        current->id = index++;
+        current = current->next;
+    }
+
+    printf("联系人删除成功。\n");
+    saveToFile();
+}
+
+void find() {
+    char name[50];
+    printf("请输入要查找的联系人姓名：");
+    scanf("%s", name);
+
+    Contact *current = head;
+    while (current) {
+        if (strcmp(current->name, name) == 0) {
+            printf("联系人信息如下：\n");
+            printf("序号：%d\n", current->id);
+            printf("姓名：%s\n", current->name);
+            printf("电话号码：%s\n", current->phone);
+            printf("备注：%s\n", current->notes);
+            return;
+        }
+        current = current->next;
+    }
+    printf("未找到联系人。\n");
+}
+
+void modify() {
+    int id;
+    printf("请输入要修改的联系人的序号：");
+    scanf("%d", &id);
+
+    if (id < 1 || id > contactCount) {
+        printf("无效的序号。\n");
+        return;
+    }
+
+    Contact *current = head;
+    while (current && current->id != id) {
+        current = current->next;
+    }
+
+    if (!current) {
+        printf("未找到联系人。\n");
+        return;
+    }
+
+    printf("请输入新的姓名（留空保持不变）：");
+    char newName[50];
+    fgets(newName, sizeof(newName), stdin); // Clear the input buffer
+    fgets(newName, sizeof(newName), stdin);
+    if (newName[0] != '\n') {
+        newName[strcspn(newName, "\n")] = '\0'; // Remove the newline character
+        strcpy(current->name, newName);
+    }
+
+    printf("请输入新的电话号码（留空保持不变）：");
+    char newPhone[20];
+    fgets(newPhone, sizeof(newPhone), stdin);
+    if (newPhone[0] != '\n') {
+        newPhone[strcspn(newPhone, "\n")] = '\0'; // Remove the newline character
+        strcpy(current->phone, newPhone);
+    }
+
+    printf("请输入新的备注（留空保持不变）：");
+    char newNotes[100];
+    fgets(newNotes, sizeof(newNotes), stdin);
+    if (newNotes[0] != '\n') {
+        newNotes[strcspn(newNotes, "\n")] = '\0'; // Remove the newline character
+        strcpy(current->notes, newNotes);
+    }
+
+    printf("联系人修改成功。\n");
+    saveToFile();
+}
+
+void SORT() {
+    if (!head || !head->next) {
+        return;
+    }
+
+    for (Contact *i = head; i->next != NULL; i = i->next) {
+        for (Contact *j = head; j->next != NULL; j = j->next) {
+            if (strcmp(j->name, j->next->name) > 0) {
+                Contact temp = *j;
+                *j = *(j->next);
+                *(j->next) = temp;
+
+                Contact *tmpNext = j->next->next;
+                j->next->next = j->next->next->next;
+                j->next->next->next = tmpNext;
+            }
+        }
+    }
+    printf("联系人已按姓名排序。\n");
+    saveToFile();
+}
+
+void display() {
+    printf("联系人列表：\n");
+    printf("+------+------------------+------------------+------------------+\n");
+    printf("| 序号 | 姓名             | 电话号码         | 备注             |\n");
+    printf("+------+------------------+------------------+------------------+\n");
+
+    Contact *current = head;
+    while (current) {
+        printf("| %-4d | %-16s | %-16s | %-16s |\n", current->id, current->name, current->phone, current->notes);
+        printf("+------+------------------+------------------+------------------+\n");
+        current = current->next;
+    }
+}
+
+int main() {
+    loadFromFile();
+    int choice;
+    do {
+        menu();
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                add();
+                break;
+            case 2:
+                Delete();
+                break;
+            case 3:
+                find();
+                break;
+            case 4:
+                modify();
+                break;
+            case 5:
+                SORT();
+                break;
+            case 6:
+                display();
+                break;
+            case 0:
+                printf("退出程序。\n");
+                break;
+            default:
+                printf("无效的选择，请重新输入。\n");
+        }
+    } while (choice != 0);
+
+    // Free all allocated memory
+    Contact *current = head;
+    while (current) {
+        Contact *next = current->next;
+        free(current);
+        current = next;
+    }
+
+    return 0;
+}
