@@ -212,7 +212,7 @@ void sort(){
     }
 
     PHONE *i, *j, *pre_j, *temp;
-    for(i=head;i->next!=NULL;i=i->next){
+    for(i=head;i！=NULL&&i->next!=NULL;i=i->next){
         pre_j=NULL;
         for(j=head;j->next!=NULL;pre_j=j,j=j->next){
             if(strcmp(j->name,j->next->name)>0){
